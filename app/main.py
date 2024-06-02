@@ -1,17 +1,26 @@
-# Uncomment this to pass the first stage
 import socket
 
-
 def main():
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!")
 
-    # Uncomment this to pass the first stage
-    #
+    # Create server socket
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    #server_socket.accept() # wait for client
-    server_socket.accept()[0].sendall(b"HTTP/1.1 200 OK\r\n\r\n")  # wait for client if connection is successful then send 200 ok 
+    
+    while True:
+        conn_socket, addr = server_socket.accept()
+        with conn_socket:
+            data = conn_socket.recv(1024)
+            if not data:
+                break
+            request_line = data.split(b"\r\n")[0]
+            request_path = request_line.split(b" ")[1]
 
+            if request_path == b"/":
+                response = b"HTTP/1.1 200 OK\r\n\r\n"
+            else:
+                response = b"HTTP/1.1 404 Not Found\r\n\r\n"
+            
+            conn_socket.sendall(response)
 
 if __name__ == "__main__":
     main()
