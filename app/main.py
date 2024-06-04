@@ -18,6 +18,15 @@ def handle_client(client_socket):
         elif url.startswith("/echo/"):
             response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(url[6:])}\r\n\r\n{url[6:]}".encode()
             client_socket.sendall(response)
+        elif url.startswith("/files/{filename}"):
+            file={}
+            if response in file:
+                response=f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(url[6:])}\r\n\r\n{url[6:]}".encode()
+                client_socket.sendall(response)
+            else:
+                client_socket.sendall(NOTFOUND_RESPONSE)
+
+
         elif url.startswith("/user-agent"):
             # Find the User-Agent header
             user_agent = ""
