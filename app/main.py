@@ -1,11 +1,13 @@
 import socket
 import re
 import threading
+import argparse
+import os
 
 OK_RESPONSE = "HTTP/1.1 200 OK\r\n\r\n".encode()
 NOTFOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
 
-def handle_client(client_socket):
+def handle_client(client_socket,directory):
     while True:
         request = client_socket.recv(1024).decode()
         if not request:
@@ -18,6 +20,17 @@ def handle_client(client_socket):
         elif url.startswith("/echo/"):
             response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(url[6:])}\r\n\r\n{url[6:]}".encode()
             client_socket.sendall(response)
+        elif url.startswith("/files/"):
+            filename = url[len("/files/"):]  # Extract the filename from the URL
+            file_path = os.path.join(directory, filename)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                with open(file_path, "rb") as f:
+                    file_content = f.read()
+                response = f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(file_content)}\r\n\r\n".encode()
+                client_socket.sendall(response + file_content)
+            else:
+                client_socket.sendall(NOTFOUND_RESPONSE)    
+        
         elif url.startswith("/files/{filename}"):
             file={}
             if response in file:
@@ -25,8 +38,6 @@ def handle_client(client_socket):
                 client_socket.sendall(response)
             else:
                 client_socket.sendall(NOTFOUND_RESPONSE)
-
-
         elif url.startswith("/user-agent"):
             # Find the User-Agent header
             user_agent = ""
@@ -45,8 +56,12 @@ def handle_client(client_socket):
     client_socket.close()
 
 def main():
-    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    while True:
+     parser = argparse.ArgumentParser(description='Simple HTTP Server')
+     parser.add_argument('--directory', required=True, help='Directory where the files are stored')
+     args = parser.parse_args()
+     directory = args.directory
+     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+     while True:
         client_socket, _retaddr = server_socket.accept()
         client_thread = threading.Thread(target=handle_client, args=(client_socket,))
         client_thread.start()
