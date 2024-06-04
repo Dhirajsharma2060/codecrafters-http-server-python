@@ -23,9 +23,24 @@ def main():
             client_socket.sendall(response)
         elif url.startswith("/user-agent"):
             user_agent = req[2].split(": ")[1]
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode()    
+             #Find the User-Agent header
+            user_agent = ""
+            for header in req:
+                if header.startswith("User-Agent:"):
+                    user_agent = header.split(": ")[1]
+                    break
+            if user_agent:
+                response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}".encode()
+                client_socket.sendall(response)
+            else:
+                client_socket.sendall(NOTFOUND_RESPONSE)
         else:
             client_socket.sendall(NOTFOUND_RESPONSE)
+        
+        request = client_socket.recv(1024).decode()  # Read next request
+    
+    client_socket.close()
+    server_socket.close()
 if __name__ == "__main__":
     main()
 
