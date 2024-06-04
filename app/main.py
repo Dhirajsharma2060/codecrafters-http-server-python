@@ -10,7 +10,7 @@ def main():
         
         if method == "GET":
             handle_get_request(client, path)
-        elif method == "POST" and path.startswith("/upload"):
+        elif method == "POST" and path.startswith("/files"):
             handle_post_request(client, req)
         else:
             response = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
@@ -40,7 +40,7 @@ def main():
         client.close()
 
     def handle_post_request(client, req):
-        # Extract the file content from the request
+        # Extract the file content from the request body
         file_data = req[-1]
         # Extract the filename from the request path
         filename = req[0].split(" ")[1].split("/")[-1]
@@ -49,7 +49,7 @@ def main():
         try:
             with open(f"/{directory}/{filename}", "wb") as f:
                 f.write(file_data.encode())
-            response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nFile uploaded successfully.".encode()
+            response = "HTTP/1.1 201 Created\r\nContent-Type: text/plain\r\n\r\nFile uploaded successfully.".encode()
         except Exception as e:
             response = f"HTTP/1.1 500 Internal Server Error\r\n\r\n{e}".encode()
         client.send(response)
