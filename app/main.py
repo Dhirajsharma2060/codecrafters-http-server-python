@@ -1,17 +1,18 @@
 import socket
 import threading
 import sys
+import os
 
 def main():
     def handle_req(client, addr):
         data = client.recv(1024).decode()
         req = data.split("\r\n")
         method, path, _ = req[0].split(" ")
-        
+
         if method == "GET":
             handle_get_request(client, path)
         elif method == "POST" and path.startswith("/files"):
-            handle_post_request(client, req)
+            handle_post_request(client, req, data)
         else:
             response = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
             client.send(response)
@@ -29,7 +30,7 @@ def main():
             directory = sys.argv[2]
             filename = path[7:]
             try:
-                with open(f"/{directory}/{filename}", "r") as f:
+                with open(f"{directory}/{filename}", "r") as f:
                     body = f.read()
                 response = f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
             except Exception as e:
@@ -39,19 +40,35 @@ def main():
         client.send(response)
         client.close()
 
-    def handle_post_request(client, req):
+    def handle_post_request(client, req, data):
+        headers = {}
+        for line in req[1:]:
+            if line == '':
+                break
+            header, value = line.split(": ", 1)
+            headers[header] = value
+
+        # Extract the content length from headers
+        content_length = int(headers.get("Content-Length", 0))
+
         # Extract the file content from the request body
-        file_data = req[-1]
+        body_start = data.index("\r\n\r\n") + 4
+        file_data = data[body_start:body_start + content_length]
+
         # Extract the filename from the request path
         filename = req[0].split(" ")[1].split("/")[-1]
+
         # Specify the directory where files will be saved
         directory = sys.argv[2]
+        os.makedirs(directory, exist_ok=True)  # Ensure the directory exists
+
         try:
-            with open(f"/{directory}/{filename}", "wb") as f:
+            with open(f"{directory}/{filename}", "wb") as f:
                 f.write(file_data.encode())
             response = "HTTP/1.1 201 Created\r\nContent-Type: text/plain\r\n\r\nFile uploaded successfully.".encode()
         except Exception as e:
             response = f"HTTP/1.1 500 Internal Server Error\r\n\r\n{e}".encode()
+        
         client.send(response)
         client.close()
 
