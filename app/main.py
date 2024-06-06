@@ -10,29 +10,32 @@ def main():
         method, path, _ = req[0].split(" ")
 
         if method == "GET":
-            handle_get_request(client, path, req)
+            handle_get_request(client, path, req, data)
         elif method == "POST" and path.startswith("/files"):
             handle_post_request(client, req, data)
         else:
-            response = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
+            response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".encode()
             client.send(response)
             client.close()
 
-    def handle_get_request(client, path, req):
+    def handle_get_request(client, path, req, data):
         if path == "/":
-            response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nWelcome to the server!".encode()
+            body = "Welcome to the server!"
+            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         elif path.startswith("/echo"):
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{path[6:]}".encode()
+            body = path[6:]
+            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         elif path.startswith("/user-agent"):
-            user_agent = None
-            for line in req:
-                if line.startswith("User-Agent:"):
-                    user_agent = line[len("User-Agent: "):]
+            headers = {}
+            for line in req[1:]:
+                if line == '':
                     break
-            if user_agent:
-                response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{user_agent}".encode()
-            else:
-                response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\n\r\nUser-Agent header not found.".encode()
+                header, value = line.split(": ", 1)
+                headers[header] = value
+            
+            user_agent = headers.get("User-Agent", "")
+            body = user_agent
+            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         elif path.startswith("/files"):
             directory = sys.argv[2]
             filename = path[7:]
@@ -41,9 +44,10 @@ def main():
                     body = f.read()
                 response = f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
             except Exception as e:
-                response = f"HTTP/1.1 404 Not Found\r\n\r\n{e}".encode()
+                body = str(e)
+                response = f"HTTP/1.1 404 Not Found\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         else:
-            response = "HTTP/1.1 404 Not Found\r\n\r\n".encode()
+            response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".encode()
         client.send(response)
         client.close()
 
@@ -72,9 +76,11 @@ def main():
         try:
             with open(f"{directory}/{filename}", "wb") as f:
                 f.write(file_data.encode())
-            response = "HTTP/1.1 201 Created\r\nContent-Type: text/plain\r\n\r\nFile uploaded successfully.".encode()
+            body = "File uploaded successfully."
+            response = f"HTTP/1.1 201 Created\r\nContent-Type: text/plain\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         except Exception as e:
-            response = f"HTTP/1.1 500 Internal Server Error\r\n\r\n{e}".encode()
+            body = str(e)
+            response = f"HTTP/1.1 500 Internal Server Error\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         
         client.send(response)
         client.close()
