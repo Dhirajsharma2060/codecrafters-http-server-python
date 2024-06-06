@@ -10,7 +10,7 @@ def main():
         method, path, _ = req[0].split(" ")
 
         if method == "GET":
-            handle_get_request(client, path)
+            handle_get_request(client, path, req)
         elif method == "POST" and path.startswith("/files"):
             handle_post_request(client, req, data)
         else:
@@ -18,14 +18,21 @@ def main():
             client.send(response)
             client.close()
 
-    def handle_get_request(client, path):
+    def handle_get_request(client, path, req):
         if path == "/":
             response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nWelcome to the server!".encode()
         elif path.startswith("/echo"):
             response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{path[6:]}".encode()
         elif path.startswith("/user-agent"):
-            user_agent = client.recv(1024).decode()
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{user_agent}".encode()
+            user_agent = None
+            for line in req:
+                if line.startswith("User-Agent:"):
+                    user_agent = line[len("User-Agent: "):]
+                    break
+            if user_agent:
+                response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{user_agent}".encode()
+            else:
+                response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\n\r\nUser-Agent header not found.".encode()
         elif path.startswith("/files"):
             directory = sys.argv[2]
             filename = path[7:]
