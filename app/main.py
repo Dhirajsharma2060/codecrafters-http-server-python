@@ -2,7 +2,7 @@ import socket
 import threading
 import sys
 import os
-import gzip  # Import gzip module
+import gzip
 
 def main():
     def handle_req(client, addr):
@@ -61,8 +61,7 @@ def main():
 
         response_headers = [
             "HTTP/1.1 200 OK",
-            f"Content-Type: {content_type}",
-            f"Content-Length: {len(body)}"
+            f"Content-Type: {content_type}"
         ]
         
         if support_gzip: # Add Content-Encoding: gzip header if gzip is supported
@@ -70,6 +69,7 @@ def main():
             response_headers.append("Content-Encoding: gzip")
             body = compressed_body
 
+        response_headers.append(f"Content-Length: {len(body)}")
         response_headers.append("")  # Add an empty line to separate headers from the body
 
         # Send headers and body separately to handle different types
