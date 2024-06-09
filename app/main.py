@@ -2,7 +2,7 @@ import socket
 import threading
 import sys
 import os
-import gzip
+import gzip  # Import gzip module
 
 def main():
     def handle_req(client, addr):
