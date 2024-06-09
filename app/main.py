@@ -30,14 +30,14 @@ def main():
         support_gzip = "gzip" in accept_encoding  # Check if gzip is supported
 
         if path == "/":
-            body = "Welcome to the server!"
+            body = "Welcome to the server!".encode()
             content_type = "text/plain"
         elif path.startswith("/echo"):
-            body = path[6:]
+            body = path[6:].encode()
             content_type = "text/plain"
         elif path.startswith("/user-agent"):
             user_agent = headers.get("user-agent", "")
-            body = user_agent
+            body = user_agent.encode()
             content_type = "text/plain"
         elif path.startswith("/files"):
             directory = sys.argv[2]
@@ -47,8 +47,8 @@ def main():
                     body = f.read()
                 content_type = "application/octet-stream"  # Correct Content-Type for files
             except Exception as e:
-                body = str(e)
-                response = f"HTTP/1.1 404 Not Found\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
+                body = str(e).encode()
+                response = f"HTTP/1.1 404 Not Found\r\nContent-Length: {len(body)}\r\n\r\n".encode() + body
                 client.send(response)
                 client.close()
                 return
@@ -68,9 +68,9 @@ def main():
             response_headers.append("Content-Encoding: gzip")
 
         response_headers.append("")  # Add an empty line to separate headers from the body
-        response_headers.append(body)
 
-        response = "\r\n".join(response_headers).encode()
+        # Send headers and body separately to handle different types
+        response = "\r\n".join(response_headers).encode() + b"\r\n" + body
         client.send(response)
         client.close()
 
