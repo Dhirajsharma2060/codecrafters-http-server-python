@@ -56,7 +56,7 @@ def main():
 
         response_headers = [
             "HTTP/1.1 200 OK",
-            "Content-Type: text/plain",
+            "Content-Type: application/octet-stream",
             f"Content-Length: {len(body)}"
         ]
         
