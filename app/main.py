@@ -2,6 +2,7 @@ import socket
 import threading
 import sys
 import os
+import gzip
 
 def main():
     def handle_req(client, addr):
@@ -64,8 +65,10 @@ def main():
             f"Content-Length: {len(body)}"
         ]
         
-        if support_gzip:  # Add Content-Encoding: gzip header if gzip is supported
+        if support_gzip: # Add Content-Encoding: gzip header if gzip is supported
+            compressed_body = gzip.compress(body) 
             response_headers.append("Content-Encoding: gzip")
+            body = compressed_body
 
         response_headers.append("")  # Add an empty line to separate headers from the body
 
