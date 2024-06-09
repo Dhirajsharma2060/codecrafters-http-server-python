@@ -19,35 +19,54 @@ def main():
             client.close()
 
     def handle_get_request(client, path, req, data):
+        headers = {}
+        for line in req[1:]:
+            if line == '':
+                break
+            header, value = line.split(": ", 1)
+            headers[header.lower()] = value  # Store headers in lowercase for case-insensitive comparison
+
+        accept_encoding = headers.get("accept-encoding", "")  # Get the Accept-Encoding header
+        support_gzip = "gzip" in accept_encoding  # Check if gzip is supported
+
         if path == "/":
             body = "Welcome to the server!"
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         elif path.startswith("/echo"):
             body = path[6:]
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         elif path.startswith("/user-agent"):
-            headers = {}
-            for line in req[1:]:
-                if line == '':
-                    break
-                header, value = line.split(": ", 1)
-                headers[header] = value
-            
-            user_agent = headers.get("User-Agent", "")
+            user_agent = headers.get("user-agent", "")
             body = user_agent
-            response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
         elif path.startswith("/files"):
             directory = sys.argv[2]
             filename = path[7:]
             try:
                 with open(f"{directory}/{filename}", "r") as f:
                     body = f.read()
-                response = f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
             except Exception as e:
                 body = str(e)
                 response = f"HTTP/1.1 404 Not Found\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
+                client.send(response)
+                client.close()
+                return
         else:
             response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".encode()
+            client.send(response)
+            client.close()
+            return
+
+        response_headers = [
+            "HTTP/1.1 200 OK",
+            "Content-Type: text/plain",
+            f"Content-Length: {len(body)}"
+        ]
+        
+        if support_gzip:  # Add Content-Encoding: gzip header if gzip is supported
+            response_headers.append("Content-Encoding: gzip")
+
+        response_headers.append("")  # Add an empty line to separate headers from the body
+        response_headers.append(body)
+
+        response = "\r\n".join(response_headers).encode()
         client.send(response)
         client.close()
 
@@ -57,21 +76,14 @@ def main():
             if line == '':
                 break
             header, value = line.split(": ", 1)
-            headers[header] = value
+            headers[header.lower()] = value  # Store headers in lowercase for case-insensitive comparison
 
-        # Extract the content length from headers
-        content_length = int(headers.get("Content-Length", 0))
-
-        # Extract the file content from the request body
+        content_length = int(headers.get("content-length", 0))
         body_start = data.index("\r\n\r\n") + 4
         file_data = data[body_start:body_start + content_length]
-
-        # Extract the filename from the request path
         filename = req[0].split(" ")[1].split("/")[-1]
-
-        # Specify the directory where files will be saved
         directory = sys.argv[2]
-        os.makedirs(directory, exist_ok=True)  # Ensure the directory exists
+        os.makedirs(directory, exist_ok=True)
 
         try:
             with open(f"{directory}/{filename}", "wb") as f:
@@ -81,7 +93,7 @@ def main():
         except Exception as e:
             body = str(e)
             response = f"HTTP/1.1 500 Internal Server Error\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
-        
+
         client.send(response)
         client.close()
 
