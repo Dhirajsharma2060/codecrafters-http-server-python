@@ -31,17 +31,21 @@ def main():
 
         if path == "/":
             body = "Welcome to the server!"
+            content_type = "text/plain"
         elif path.startswith("/echo"):
             body = path[6:]
+            content_type = "text/plain"
         elif path.startswith("/user-agent"):
             user_agent = headers.get("user-agent", "")
             body = user_agent
+            content_type = "text/plain"
         elif path.startswith("/files"):
             directory = sys.argv[2]
             filename = path[7:]
             try:
-                with open(f"{directory}/{filename}", "r") as f:
+                with open(f"{directory}/{filename}", "rb") as f:
                     body = f.read()
+                content_type = "application/octet-stream"  # Correct Content-Type for files
             except Exception as e:
                 body = str(e)
                 response = f"HTTP/1.1 404 Not Found\r\nContent-Length: {len(body)}\r\n\r\n{body}".encode()
@@ -56,7 +60,7 @@ def main():
 
         response_headers = [
             "HTTP/1.1 200 OK",
-            "Content-Type: application/octet-stream",
+            f"Content-Type: {content_type}",
             f"Content-Length: {len(body)}"
         ]
         
